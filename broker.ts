@@ -10,6 +10,7 @@
  */
 
 import { homedir } from "node:os";
+import { timingSafeEqual } from "node:crypto";
 import { Database } from "bun:sqlite";
 import type {
   RegisterRequest,
@@ -29,6 +30,27 @@ import type {
 
 const PORT = parseInt(process.env.CLAUDE_PEERS_PORT ?? "7899", 10);
 const DB_PATH = process.env.CLAUDE_PEERS_DB ?? `${homedir()}/.claude-multi-peer.db`;
+
+// --- Auth (fail-closed) ---
+// broker must not start without a shared secret configured. All POST endpoints
+// (except /health, which stays open for liveness probes) require it via the
+// X-Claude-Peers-Token header, compared with a timing-safe equality check.
+const AUTH_TOKEN = process.env.CLAUDE_PEERS_TOKEN ?? "";
+if (!AUTH_TOKEN) {
+  console.error(
+    "[broker] FATAL: CLAUDE_PEERS_TOKEN is not set. Refusing to start without a shared secret (fail-closed)."
+  );
+  process.exit(1);
+}
+
+function isAuthorized(req: Request): boolean {
+  const provided = req.headers.get("X-Claude-Peers-Token") ?? "";
+  const expected = AUTH_TOKEN;
+  const providedBuf = Buffer.from(provided, "utf8");
+  const expectedBuf = Buffer.from(expected, "utf8");
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return timingSafeEqual(providedBuf, expectedBuf);
+}
 
 // --- Database setup ---
 
@@ -636,6 +658,12 @@ Bun.serve({
         return Response.json({ status: "ok" });
       }
       return new Response("claude-peers broker", { status: 200 });
+    }
+
+    // Auth gate: all POST endpoints require a valid shared-secret token.
+    // Checked before body parsing so an unauthorized request's body is never read.
+    if (!isAuthorized(req)) {
+      return Response.json({ error: "unauthorized" }, { status: 401 });
     }
 
     try {
