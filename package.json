@@ -1,0 +1,48 @@
+{
+  "name": "claude-multi-peer",
+  "version": "0.1.0",
+  "description": "Multi-peer messaging MCP for Claude Code — peer discovery, cross-session messaging, persistent identity across restarts, log rotation, and optional Discord/Slack/LINE adapters. Fork of louislva/claude-peers-mcp.",
+  "keywords": [
+    "claude-code",
+    "mcp",
+    "model-context-protocol",
+    "peer-to-peer",
+    "messaging",
+    "discord",
+    "slack",
+    "line",
+    "bridge",
+    "multi-agent"
+  ],
+  "author": "Kiyuki Shoji",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edhiblemeer/claude-multi-peer.git"
+  },
+  "homepage": "https://github.com/edhiblemeer/claude-multi-peer#readme",
+  "bugs": {
+    "url": "https://github.com/edhiblemeer/claude-multi-peer/issues"
+  },
+  "module": "index.ts",
+  "main": "index.ts",
+  "type": "module",
+  "private": false,
+  "scripts": {
+    "broker": "bun broker.ts",
+    "server": "bun server.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

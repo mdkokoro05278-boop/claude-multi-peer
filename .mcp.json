@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "claude-multi-peer": {
+      "command": "bun",
+      "args": ["./server.ts"]
+    }
+  }
+}
