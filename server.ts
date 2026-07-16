@@ -267,7 +267,7 @@ const TOOLS = [
   {
     name: "send_message",
     description:
-      "Send a message to another Claude Code instance (or subagent virtual peer) by peer ID. The message will be pushed into the target's session immediately via channel notification (or queued for explicit polling for subagent virtual peers).",
+      "Send a message to another Claude Code instance (or subagent virtual peer) by peer ID. The message will be pushed into the target's session immediately via channel notification (or queued for explicit polling for subagent virtual peers). You can also send to an external chat-platform channel served by a running adapter by using an adapter to_id like \"adapter:discord:<channel_id>\"; the adapter (see adapters/discord/) will post the text to that channel.",
     inputSchema: {
       type: "object" as const,
       properties: {

@@ -99,7 +99,7 @@ The broker auto-launches when the first session starts. It cleans up dead peers 
 - **Persistent peer IDs across restarts.** On the upstream, every restart mints a fresh random ID, breaking any external mapping (Discord bridges, dashboards, subagent references) that remembered the old one. This fork records `cwd + git_root` on register; on re-registration, if a recently dead peer with the same fingerprint is found within a reuse window (default 24h, override via `CLAUDE_PEERS_ID_REUSE_WINDOW_HOURS`), that ID is reused. If the previous PID is still alive the old ID is not reused. Fresh workspaces still get fresh random IDs.
 - **Delivered-message log rotation.** The upstream never purges delivered messages, so the SQLite DB grows unbounded over months of use. This fork adds an hourly sweep that deletes rows where `delivered = 1 AND sent_at < now - TTL` (default 7 days, override via `CLAUDE_PEERS_MESSAGE_TTL_HOURS`). Undelivered messages are never touched by this sweep.
 
-Planned (see [Roadmap](#roadmap)): Discord / Slack / LINE adapters that let a peer route messages via any of those chat platforms without a separate bridge process.
+- **Discord adapter (v0.2).** A built-in adapter under `adapters/discord/` bridges Discord channels to peer sessions. A person on Discord can post in a mapped channel to talk to a running peer, and any peer can post back by sending a message to `adapter:discord:<channel_id>`. See [`adapters/discord/README.md`](adapters/discord/README.md). Slack and LINE adapters are on the roadmap and can follow the same shape.
 
 ## Auto-summary
 
@@ -139,7 +139,8 @@ bun cli.ts kill-broker       # stop the broker
 
 ## Roadmap
 
-- Discord / Slack / LINE adapters — pluggable transports that route a peer's messages via a chat platform, so a human can talk to a session from Discord and vice versa without a separate bridge process
+- Slack + LINE adapters (same shape as the Discord adapter)
+- ack-on-post semantics for adapter outbound (currently mark-delivered-on-read)
 - Optional npm distribution (`bunx claude-multi-peer` install path)
 - Subagent (virtual peer) documentation and examples
 

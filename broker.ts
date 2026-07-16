@@ -515,6 +515,15 @@ function handleListPeers(body: ListPeersRequest): Peer[] {
 }
 
 function handleSendMessage(body: SendMessageRequest): { ok: boolean; error?: string } {
+  // claude-multi-peer: adapter routing.
+  // If to_id is prefixed "adapter:<type>:<external_id>", the message is destined for an
+  // external platform (e.g. Discord channel) served by a running adapter process. The
+  // adapter drains these via /adapter-poll. We insert directly without a peers-table check.
+  if (body.to_id.startsWith("adapter:")) {
+    insertMessage.run(body.from_id, body.to_id, body.text, new Date().toISOString());
+    return { ok: true };
+  }
+
   // Verify target exists
   const target = db.query("SELECT id FROM peers WHERE id = ?").get(body.to_id) as { id: string } | null;
   if (!target) {
@@ -523,6 +532,46 @@ function handleSendMessage(body: SendMessageRequest): { ok: boolean; error?: str
 
   insertMessage.run(body.from_id, body.to_id, body.text, new Date().toISOString());
   return { ok: true };
+}
+
+// claude-multi-peer: adapter → peer (inbound) delivery.
+// Called by a running adapter (e.g. Discord bot) when it receives a message from its
+// platform. from_id is a synthetic adapter identity like "adapter:discord:1516364092447916072".
+// to_id must be a real peer ID resolved by the adapter from its channel-to-peer map.
+function handleAdapterDeliver(body: {
+  from_id: string;
+  to_id: string;
+  text: string;
+}): { ok: boolean; error?: string } {
+  if (!body.from_id.startsWith("adapter:")) {
+    return { ok: false, error: `Adapter deliver requires from_id starting with "adapter:"` };
+  }
+  const target = db.query("SELECT id FROM peers WHERE id = ?").get(body.to_id) as { id: string } | null;
+  if (!target) {
+    return { ok: false, error: `Peer ${body.to_id} not found` };
+  }
+  insertMessage.run(body.from_id, body.to_id, body.text, new Date().toISOString());
+  return { ok: true };
+}
+
+// claude-multi-peer: adapter drain queue (outbound).
+// Adapter polls this endpoint to fetch messages any peer sent to "adapter:<type>:..." and
+// marks them delivered on read. Matches the ack-based path used for peers: adapter should
+// only mark delivered on the broker side once it has actually posted to the platform.
+const selectAdapterOutbound = db.prepare(`
+  SELECT * FROM messages
+  WHERE to_id LIKE ? AND delivered = 0
+  ORDER BY sent_at ASC
+`);
+function handleAdapterPoll(body: { adapter: string }): { messages: Message[] } {
+  if (!body.adapter) return { messages: [] };
+  const prefix = `adapter:${body.adapter}:%`;
+  const messages = selectAdapterOutbound.all(prefix) as Message[];
+  // Mark them delivered — adapter is expected to attempt post; failed posts will
+  // stay lost. This matches how peers currently poll (fire-and-forget). A future
+  // extension could use ack semantics matching /poll-messages-v2 + /ack-message.
+  for (const msg of messages) markDelivered.run(msg.id);
+  return { messages };
 }
 
 function handlePollMessages(body: PollMessagesRequest): PollMessagesResponse {
@@ -621,6 +670,12 @@ Bun.serve({
         case "/unregister-virtual-peer":
           handleUnregisterVirtualPeer(body as UnregisterVirtualPeerRequest);
           return Response.json({ ok: true });
+        case "/adapter-deliver":
+          return Response.json(
+            handleAdapterDeliver(body as { from_id: string; to_id: string; text: string })
+          );
+        case "/adapter-poll":
+          return Response.json(handleAdapterPoll(body as { adapter: string }));
         default:
           return Response.json({ error: "not found" }, { status: 404 });
       }

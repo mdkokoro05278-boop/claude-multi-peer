@@ -1,6 +1,6 @@
 {
   "name": "claude-multi-peer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Multi-peer messaging MCP for Claude Code — peer discovery, cross-session messaging, persistent identity across restarts, log rotation, and optional Discord/Slack/LINE adapters. Fork of louislva/claude-peers-mcp.",
   "keywords": [
     "claude-code",
@@ -40,7 +40,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1"
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "discord.js": "^14.27.0"
   },
   "engines": {
     "bun": ">=1.0.0"
