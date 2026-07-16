@@ -77,7 +77,9 @@ async function ensureBroker(): Promise<void> {
   }
 
   log("Starting broker daemon...");
-  const proc = Bun.spawn(["bun", BROKER_SCRIPT], {
+  // Use the running bun executable's own path — a bare "bun" fails when the
+  // spawning environment (e.g. a GUI-launched Claude session) lacks it on PATH.
+  const proc = Bun.spawn([process.execPath, BROKER_SCRIPT], {
     stdio: ["ignore", "ignore", "inherit"],
     // Detach so the broker survives if this MCP server exits
     // On macOS/Linux, the broker will keep running
