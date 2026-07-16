@@ -1,8 +1,18 @@
 @echo off
 REM claude-multi-peer: worker-1 (execution role) session launcher.
-REM CLAUDE_PEERS_TOKEN is NOT set here — it must already exist as a user
+REM CLAUDE_PEERS_TOKEN is NOT set here -- it must already exist as a user
 REM environment variable and is inherited from the calling shell/session.
-cd /d "C:\Users\mdkok\Desktop\code demo\.claude\workspaces\worker-1"
+REM Repo path is resolved per-PC by existence check (no hardcoded usernames).
+if exist "%USERPROFILE%\Desktop\code demo\CLAUDE.md" (
+  set "REPO=%USERPROFILE%\Desktop\code demo"
+) else if exist "%USERPROFILE%\Desktop\main-pc-work\CLAUDE.md" (
+  set "REPO=%USERPROFILE%\Desktop\main-pc-work"
+) else (
+  echo [ERROR] project repo not found under %USERPROFILE%\Desktop
+  pause
+  exit /b 1
+)
+cd /d "%REPO%\.claude\workspaces\worker-1"
 set "CLAUDE_PEERS_FORCE_POLL=1"
 set "PATH=%USERPROFILE%\.bun\bin;%PATH%"
 claude --dangerously-load-development-channels server:claude-multi-peer
