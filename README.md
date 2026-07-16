@@ -101,6 +101,42 @@ The broker auto-launches when the first session starts. It cleans up dead peers 
 
 - **Discord adapter (v0.2).** A built-in adapter under `adapters/discord/` bridges Discord channels to peer sessions. A person on Discord can post in a mapped channel to talk to a running peer, and any peer can post back by sending a message to `adapter:discord:<channel_id>`. See [`adapters/discord/README.md`](adapters/discord/README.md). Slack and LINE adapters are on the roadmap and can follow the same shape.
 
+## Discord adapter
+
+Bridges Discord channels to peer sessions bidirectionally. Anyone in a mapped Discord channel can talk to a running Claude Code session, and the session can post back to that channel.
+
+### Setup
+
+1. Create a Discord application + bot at https://discord.com/developers/applications, enable **Message Content Intent**, and invite the bot to your server with `View Channels`, `Read Message History`, `Send Messages` permissions.
+2. Copy `adapters/discord/.env.example` to `adapters/discord/.env`. Fill in:
+   - `DISCORD_BOT_TOKEN` — the bot token from the developer portal
+   - `CLAUDE_PEERS_DISCORD_CHANNEL_MAP` — JSON of `{channel_id: peer_id}`. Find peer IDs by running `bun cli.ts peers` from the repo root, or by asking a session to call its `whoami` tool.
+3. Start the adapter (broker auto-starts if not already running):
+
+   ```bash
+   cd adapters/discord
+   bun bot.ts
+   ```
+
+### Usage
+
+- **Discord → peer (inbound).** Post in a mapped channel. The mapped peer receives the message with `from_id: adapter:discord:<channel_id>`.
+- **peer → Discord (outbound).** A session posts back by calling `send_message` with `to_id: adapter:discord:<channel_id>`. The adapter picks it up and posts to the channel.
+
+### How it fits together
+
+```
+   Discord user ──▶ Discord channel ──▶ bot.ts ──▶ /adapter-deliver ──▶ broker ──▶ peer
+                                                                              │
+   Discord user ◀── Discord channel ◀── bot.ts ◀── /adapter-poll   ◀──────────┘
+                                                                     (peer.send_message
+                                                                      to_id=adapter:discord:CH)
+```
+
+The adapter is a separate process alongside the broker. It uses only the localhost broker HTTP surface — no changes to session code needed. Slack and LINE adapters can follow the same shape (`adapter:slack:...`, `adapter:line:...`).
+
+Full setup / failure-mode reference: [`adapters/discord/README.md`](adapters/discord/README.md).
+
 ## Auto-summary
 
 If you set `OPENAI_API_KEY` in your environment, each instance generates a brief summary on startup using `gpt-5.4-nano` (costs fractions of a cent). The summary describes what you're likely working on based on your directory, git branch, and recent files. Other instances see this when they call `list_peers`.
